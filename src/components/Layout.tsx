@@ -1,69 +1,45 @@
+// src/components/ProtectedRoute.tsx
 import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/enhanced-button';
-import { Card } from '@/components/ui/card';
-import { LogOut, Shirt, User, Settings } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-interface LayoutProps {
+interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: 'admin' | 'user';
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { profile, signOut } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+  const { profile, loading } = useAuth();
+  const location = useLocation();
 
-  return (
-    <div className="min-h-screen bg-gradient-primary">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="bg-white rounded-lg p-2">
-                <Shirt className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">Garb Rent</h1>
-                <p className="text-sm text-white/70 capitalize">
-                  Dashboard {profile?.role}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-white">
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{profile?.name}</span>
-                {profile?.role === 'admin' && (
-                  <span className="bg-white/20 text-xs px-2 py-1 rounded-full">
-                    Admin
-                  </span>
-                )}
-              </div>
-              
-              <Button
-                onClick={signOut}
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/10"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Keluar
-              </Button>
-            </div>
-          </div>
+  // 1. Tampilkan layar loading jika konteks masih memeriksa status otentikasi
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
+          <p className="text-white/80">Memverifikasi sesi...</p>
         </div>
-      </header>
+      </div>
+    );
+  }
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-glow">
-          <div className="p-6">
-            {children}
-          </div>
-        </Card>
-      </main>
-    </div>
-  );
+  // 2. Jika loading selesai dan TIDAK ADA profil, arahkan ke halaman login
+  if (!profile) {
+    // Simpan halaman yang ingin dituju agar bisa kembali setelah login
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // 3. Jika ada role yang dibutuhkan dan role pengguna tidak sesuai, arahkan ke halaman yang sesuai
+  if (requiredRole && profile.role !== requiredRole) {
+    // Jika admin mencoba akses halaman user, arahkan ke dashboard admin, begitu juga sebaliknya.
+    const redirectTo = profile.role === 'admin' ? '/admin' : '/user';
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  // 4. Jika semua pemeriksaan lolos, tampilkan halaman yang seharusnya
+  return <>{children}</>;
 };
 
-export default Layout;
+export default ProtectedRoute;
