@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,61 +35,102 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // refs to avoid duplicate fetches
+  const currentUserIdRef = useRef<string | null>(null);
+  const fetchingRef = useRef(false);
+
   const fetchProfile = async (userId: string) => {
+    // jika sedang fetch atau userId sama dengan yang sudah ada, skip
+    if (fetchingRef.current) {
+      console.log('[Auth] fetchProfile skipped: already fetching');
+      return;
+    }
+    if (currentUserIdRef.current === userId && profile) {
+      console.log('[Auth] fetchProfile skipped: same userId');
+      return;
+    }
+
+    fetchingRef.current = true;
     try {
+      console.log('[Auth] fetchProfile start for', userId);
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
+      if (error) {
+        console.error('[Auth] fetchProfile error', error);
+        setProfile(null);
+      } else {
+        setProfile(data ?? null);
+        currentUserIdRef.current = userId;
+      }
+    } catch (err) {
+      console.error('[Auth] fetchProfile catch', err);
       setProfile(null);
+    } finally {
+      fetchingRef.current = false;
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
-        
-        setLoading(false);
-      }
-    );
+    let mounted = true;
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
+    // subscribe perubahan auth (dipanggil sekali saat mounted)
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!mounted) return;
+      setSession(newSession ?? null);
+      setUser(newSession?.user ?? null);
+
+      // jika ada user, fetch profile (tapi fetchProfile akan mencegah duplikasi)
+      if (newSession?.user?.id) {
+        fetchProfile(newSession.user.id);
+      } else {
+        setProfile(null);
+        currentUserIdRef.current = null;
       }
-      
+
+      // selesai pengecekan auth untuk event ini
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // juga cek session saat pertama kali mount (getSession)
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return;
+        setSession(session ?? null);
+        setUser(session?.user ?? null);
+
+        if (session?.user?.id) {
+          fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+          currentUserIdRef.current = null;
+        }
+      })
+      .catch(err => {
+        console.error('[Auth] getSession error', err);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+      // cleanup listener
+      try {
+        listener?.subscription?.unsubscribe();
+      } catch (e) {
+        // ignore
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run sekali saat mount
 
   const signUp = async (email: string, password: string, name: string, role: 'admin' | 'user' = 'user') => {
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -103,7 +144,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (signUpError) throw signUpError;
-
       return { error: null };
     } catch (error) {
       return { error };
@@ -118,7 +158,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) throw error;
-
       return { error: null };
     } catch (error) {
       return { error };
@@ -130,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setSession(null);
     setProfile(null);
+    currentUserIdRef.current = null;
   };
 
   const value: AuthContextType = {
