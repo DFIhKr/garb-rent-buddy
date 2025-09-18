@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,99 +35,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // refs to avoid duplicate fetches
-  const currentUserIdRef = useRef<string | null>(null);
-  const fetchingRef = useRef(false);
-
-  const fetchProfile = async (userId: string) => {
-    // jika sedang fetch atau userId sama dengan yang sudah ada, skip
-    if (fetchingRef.current) {
-      console.log('[Auth] fetchProfile skipped: already fetching');
-      return;
-    }
-    if (currentUserIdRef.current === userId && profile) {
-      console.log('[Auth] fetchProfile skipped: same userId');
-      return;
-    }
-
-    fetchingRef.current = true;
-    try {
-      console.log('[Auth] fetchProfile start for', userId);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('[Auth] fetchProfile error', error);
-        setProfile(null);
-      } else {
-        setProfile(data ?? null);
-        currentUserIdRef.current = userId;
-      }
-    } catch (err) {
-      console.error('[Auth] fetchProfile catch', err);
-      setProfile(null);
-    } finally {
-      fetchingRef.current = false;
-    }
-  };
-
+  // useEffect (1): Hanya untuk sinkronisasi sesi dan user dari Supabase Auth
   useEffect(() => {
-    let mounted = true;
-
-    // subscribe perubahan auth (dipanggil sekali saat mounted)
-    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-      if (!mounted) return;
-      setSession(newSession ?? null);
-      setUser(newSession?.user ?? null);
-
-      // jika ada user, fetch profile (tapi fetchProfile akan mencegah duplikasi)
-      if (newSession?.user?.id) {
-        fetchProfile(newSession.user.id);
-      } else {
-        setProfile(null);
-        currentUserIdRef.current = null;
-      }
-
-      // selesai pengecekan auth untuk event ini
-      setLoading(false);
+    // Cek sesi saat komponen pertama kali dimuat
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      // Loading berhenti setelah sesi awal dicek, bukan setelah profil didapat
+      setLoading(false); 
     });
 
-    // juga cek session saat pertama kali mount (getSession)
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (!mounted) return;
-        setSession(session ?? null);
+    // Listener untuk memantau perubahan status otentikasi
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
         setUser(session?.user ?? null);
-
-        if (session?.user?.id) {
-          fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-          currentUserIdRef.current = null;
-        }
-      })
-      .catch(err => {
-        console.error('[Auth] getSession error', err);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-      // cleanup listener
-      try {
-        listener?.subscription?.unsubscribe();
-      } catch (e) {
-        // ignore
+        setLoading(false);
       }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run sekali saat mount
+    );
 
+    // Cleanup listener saat komponen di-unmount
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  // useEffect (2): Untuk mengambil data profil dari database HANYA KETIKA user berubah
+  useEffect(() => {
+    // Jika ada user dan belum ada profil, ambil datanya
+    if (user && !profile) {
+      supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('[Auth] Gagal mengambil profil:', error);
+          }
+          setProfile(data ?? null);
+        });
+    } else if (!user) {
+      // Jika tidak ada user (logout), hapus data profil
+      setProfile(null);
+    }
+  }, [user, profile]); // <-- Dijalankan ketika 'user' atau 'profile' berubah
+
+  // Fungsi lainnya tetap sama
   const signUp = async (email: string, password: string, name: string, role: 'admin' | 'user' = 'user') => {
     try {
       const redirectUrl = `${window.location.origin}/`;
@@ -136,13 +90,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
-            name,
-            role
-          }
-        }
+          data: { name, role },
+        },
       });
-
       if (signUpError) throw signUpError;
       return { error: null };
     } catch (error) {
@@ -152,11 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return { error: null };
     } catch (error) {
@@ -166,10 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    currentUserIdRef.current = null;
+    // State user, session, dan profile akan di-reset oleh listener di useEffect
   };
 
   const value: AuthContextType = {
@@ -179,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
-    loading
+    loading,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
