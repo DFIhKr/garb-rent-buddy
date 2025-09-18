@@ -32,6 +32,7 @@ interface Transaction {
 }
 
 const AdminDashboard = () => {
+  console.log('MERENDER AdminDashboard:', new Date().toLocaleTimeString()); // <-- TAMBAHKAN INI
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
