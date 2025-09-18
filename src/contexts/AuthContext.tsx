@@ -37,15 +37,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // useEffect (1): Hanya untuk sinkronisasi sesi dan user dari Supabase Auth
   useEffect(() => {
-    // Cek sesi saat komponen pertama kali dimuat
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      // Loading berhenti setelah sesi awal dicek, bukan setelah profil didapat
       setLoading(false); 
     });
 
-    // Listener untuk memantau perubahan status otentikasi
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
@@ -54,16 +51,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Cleanup listener saat komponen di-unmount
     return () => {
       subscription?.unsubscribe();
     };
   }, []);
 
-  // useEffect (2): Untuk mengambil data profil dari database HANYA KETIKA user berubah
+  // useEffect (2): Untuk mengambil data profil HANYA KETIKA user.id berubah
   useEffect(() => {
-    // Jika ada user dan belum ada profil, ambil datanya
-    if (user && !profile) {
+    // Jika ada user.id, ambil profilnya.
+    if (user?.id) {
       supabase
         .from('users')
         .select('*')
@@ -71,15 +67,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single()
         .then(({ data, error }) => {
           if (error) {
-            console.error('[Auth] Gagal mengambil profil:', error);
+            console.error('[Auth] Gagal mengambil profil:', error.message);
+            setProfile(null); // Set profil ke null jika ada error
+          } else {
+            setProfile(data ?? null);
           }
-          setProfile(data ?? null);
         });
-    } else if (!user) {
+    } else {
       // Jika tidak ada user (logout), hapus data profil
       setProfile(null);
     }
-  }, [user, profile]); // <-- Dijalankan ketika 'user' atau 'profile' berubah
+  }, [user?.id]); // <-- PERUBAHAN KRUSIAL: dari [user, profile] menjadi [user?.id]
 
   // Fungsi lainnya tetap sama
   const signUp = async (email: string, password: string, name: string, role: 'admin' | 'user' = 'user') => {
@@ -112,7 +110,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    // State user, session, dan profile akan di-reset oleh listener di useEffect
   };
 
   const value: AuthContextType = {
