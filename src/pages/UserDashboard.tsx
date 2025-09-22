@@ -1,4 +1,4 @@
-// src/pages/UserDashboard.tsx - PERBAIKAN FINAL UNTUK .gtc MENJADI .gt
+// src/pages/UserDashboard.tsx - PERBAIKAN FINAL UNTUK BARIS KODE YANG TERPOTONG
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
@@ -71,7 +71,7 @@ const UserDashboard = () => {
       .from('transactions')
       .select(`id, quantity, returned_quantity, created_at, products (name)`)
       .eq('user_id', profile.id)
-      .gt('quantity', 'returned_quantity'); // <-- KESALAHAN .gtc SUDAH DIPERBAIKI MENJADI .gt
+      .gt('quantity', 'returned_quantity');
     if (error) throw error;
     setBorrowedItems(data || []);
   };
@@ -268,4 +268,26 @@ const UserDashboard = () => {
             <form onSubmit={handleReturn} className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="return-quantity">Jumlah yang Dikembalikan</Label>
-                <Input id="return-quantity" type="number" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} min="1" max={returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned
+                {/* INI ADALAH BARIS YANG DIPERBAIKI */}
+                <Input id="return-quantity" type="number" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} min="1" max={returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} required />
+                <p className="text-xs text-muted-foreground">Masih dipinjam: {returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} unit</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="return-reason">Laporan / Alasan Pengembalian</Label>
+                <Textarea id="return-reason" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} placeholder="Contoh: Acara sudah selesai" />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setReturnDialog({ open: false, item: null })} className="flex-1">Batal</Button>
+                <Button type="submit" variant="gradient" disabled={submitting} className="flex-1">
+                  {submitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memproses...</>) : 'Kembalikan Barang'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Layout>
+  );
+};
+
+export default UserDashboard;
