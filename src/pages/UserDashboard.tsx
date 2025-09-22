@@ -1,4 +1,4 @@
-// src/pages/UserDashboard.tsx - VERSI FINAL DENGAN FITUR PENGEMBALIAN (LENGKAP)
+// src/pages/UserDashboard.tsx - VERSI FINAL DENGAN PERBAIKAN SINTAKS
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
@@ -110,4 +110,49 @@ const UserDashboard = () => {
     const item = returnDialog.item;
     const maxReturn = item.quantity - item.returned_quantity;
     if (quantityToReturn <= 0 || quantityToReturn > maxReturn) {
-      toast({
+      toast({ title: "Error", description: `Jumlah harus antara 1 dan ${maxReturn}`, variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.rpc('handle_return', {
+        p_transaction_id: item.id, p_return_quantity: quantityToReturn, p_return_reason: returnReason
+      });
+      if (error) throw error;
+      toast({ title: "Berhasil!", description: "Barang telah dikembalikan.", variant: "default" });
+      setReturnDialog({ open: false, item: null });
+      fetchAllData();
+    } catch (error: any) {
+      toast({ title: "Gagal Mengembalikan", description: error.message || "Terjadi kesalahan.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openReturnDialog = (item: BorrowedItem) => {
+    setReturnQuantity('1');
+    setReturnReason('');
+    setReturnDialog({ open: true, item });
+  };
+  
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  if (loading) {
+    return <Layout><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></Layout>;
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard User</h1>
+          <p className="text-muted-foreground mt-2">Lihat produk yang tersedia, pinjam, dan kembalikan barang</p>
+        </div>
+
+        <Tabs defaultValue="available" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="available" className="flex items-center space-x-2"><ShoppingCart className="h-4 w-4" /><span>Barang Dapat Dipinjam</span></TabsTrigger>
+            <TabsTrigger value="borrowed" className="flex items-center space-x-2"><ArchiveRestore className="h-4 w-4" /><span>Barang yang Dipinjam</span></TabsTrigger>
+          </TabsList>
+
+          <TabsContent
