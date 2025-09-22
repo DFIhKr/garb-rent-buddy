@@ -1,6 +1,6 @@
-// src/pages/UserDashboard.tsx - VERSI FINAL DENGAN PERBAIKAN SINTAKS
+// src/pages/UserDashboard.tsx - VERSI DEBUG UNTUK MENGISOLASI ERROR
 
-import React, { useState, useEffect } from 'react';
+import React, 'useState', useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/enhanced-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -155,4 +155,110 @@ const UserDashboard = () => {
             <TabsTrigger value="borrowed" className="flex items-center space-x-2"><ArchiveRestore className="h-4 w-4" /><span>Barang yang Dipinjam</span></TabsTrigger>
           </TabsList>
 
-          <TabsContent
+          <TabsContent value="available">
+            {/* ===== BAGIAN INI KITA SEDERHANAKAN UNTUK DEBUGGING ===== */}
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <p>Memuat daftar produk...</p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="borrowed">
+            <Card>
+              <CardContent className="p-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nama Barang</TableHead>
+                      <TableHead>Jumlah Dipinjam</TableHead>
+                      <TableHead>Tanggal Pinjam</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {borrowedItems.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground">Anda tidak sedang meminjam barang.</TableCell></TableRow>
+                    ) : (
+                      borrowedItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.products.name}</TableCell>
+                          <TableCell>{item.quantity - item.returned_quantity} dari {item.quantity} unit</TableCell>
+                          <TableCell>{formatDate(item.created_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => openReturnDialog(item)}><Undo2 className="h-4 w-4 mr-2"/>Kembalikan</Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+        
+        <Dialog open={borrowDialog.open} onOpenChange={(open) => setBorrowDialog({ ...borrowDialog, open: open, product: open ? borrowDialog.product : null })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Buat Laporan Peminjaman</DialogTitle>
+              <DialogDescription>Isi form berikut untuk meminjam {borrowDialog.product?.name}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleBorrow} className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="borrower-name">Nama Peminjam</Label>
+                <Input id="borrower-name" value={borrowerName} onChange={(e) => setBorrowerName(e.target.value)} placeholder="Tulis nama peminjam" required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="user-class">Kelas</Label>
+                  <Input id="user-class" value={userClass} onChange={(e) => setUserClass(e.target.value)} placeholder="Contoh: XII RPL 1" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Jumlah</Label>
+                  <Input id="quantity" type="number" value={borrowQuantity} onChange={(e) => setBorrowQuantity(e.target.value)} placeholder="Jumlah" min="1" max={borrowDialog.product?.stock || 0} required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reason">Keterangan / Alasan Meminjam</Label>
+                <Textarea id="reason" value={borrowReason} onChange={(e) => setBorrowReason(e.target.value)} placeholder="Contoh: Dipinjam untuk 4 orang untuk acara sekolah" />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setBorrowDialog({ open: false, product: null })} className="flex-1">Batal</Button>
+                <Button type="submit" variant="gradient" disabled={submitting} className="flex-1">
+                  {submitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memproses...</>) : 'Buat Laporan'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={returnDialog.open} onOpenChange={(open) => setReturnDialog({ ...returnDialog, open: open, item: open ? returnDialog.item : null })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Form Pengembalian Barang</DialogTitle>
+              <DialogDescription>Mengembalikan: {returnDialog.item?.products.name}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleReturn} className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="return-quantity">Jumlah yang Dikembalikan</Label>
+                <Input id="return-quantity" type="number" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} min="1" max={returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} required />
+                <p className="text-xs text-muted-foreground">Masih dipinjam: {returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} unit</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="return-reason">Laporan / Alasan Pengembalian</Label>
+                <Textarea id="return-reason" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} placeholder="Contoh: Acara sudah selesai" />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setReturnDialog({ open: false, item: null })} className="flex-1">Batal</Button>
+                <Button type="submit" variant="gradient" disabled={submitting} className="flex-1">
+                  {submitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memproses...</>) : 'Kembalikan Barang'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Layout>
+  );
+};
+
+export default UserDashboard;
