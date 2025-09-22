@@ -1,6 +1,6 @@
 // src/pages/UserDashboard.tsx - VERSI BARU DENGAN FITUR KETERANGAN
 
-import React, 'useState', useEffect } from 'react';
+import React, useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/enhanced-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
