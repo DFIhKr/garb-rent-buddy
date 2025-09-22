@@ -1,4 +1,4 @@
-// src/pages/UserDashboard.tsx - PERBAIKAN FINAL UNTUK BARIS KODE YANG TERPOTONG
+// src/pages/UserDashboard.tsx - PERBAIKAN FINAL UNTUK FILTER KOLOM
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
@@ -71,7 +71,8 @@ const UserDashboard = () => {
       .from('transactions')
       .select(`id, quantity, returned_quantity, created_at, products (name)`)
       .eq('user_id', profile.id)
-      .gt('quantity', 'returned_quantity');
+      // ===== INI ADALAH BARIS YANG DIPERBAIKI =====
+      .filter('quantity', 'gt.returned_quantity');
     if (error) throw error;
     setBorrowedItems(data || []);
   };
@@ -268,7 +269,6 @@ const UserDashboard = () => {
             <form onSubmit={handleReturn} className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="return-quantity">Jumlah yang Dikembalikan</Label>
-                {/* INI ADALAH BARIS YANG DIPERBAIKI */}
                 <Input id="return-quantity" type="number" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} min="1" max={returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} required />
                 <p className="text-xs text-muted-foreground">Masih dipinjam: {returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} unit</p>
               </div>
