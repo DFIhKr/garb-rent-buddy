@@ -1,6 +1,6 @@
-// src/pages/UserDashboard.tsx - VERSI DEBUG UNTUK MENGISOLASI ERROR
+// src/pages/UserDashboard.tsx - PERBAIKAN FINAL UNTUK .gtc MENJADI .gt
 
-import React, { useState , useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/enhanced-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +43,9 @@ const UserDashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if(profile) fetchAllData();
+    if(profile) {
+      fetchAllData();
+    }
   }, [profile]);
 
   const fetchAllData = async () => {
@@ -51,7 +53,7 @@ const UserDashboard = () => {
     try {
       await Promise.all([fetchProducts(), fetchBorrowedItems()]);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Gagal memuat data", variant: "destructive" });
+      toast({ title: "Error Memuat Data", description: error.message || "Gagal memuat data dari database.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -69,7 +71,7 @@ const UserDashboard = () => {
       .from('transactions')
       .select(`id, quantity, returned_quantity, created_at, products (name)`)
       .eq('user_id', profile.id)
-      .gtc('quantity', 'returned_quantity');
+      .gt('quantity', 'returned_quantity'); // <-- KESALAHAN .gtc SUDAH DIPERBAIKI MENJADI .gt
     if (error) throw error;
     setBorrowedItems(data || []);
   };
@@ -156,9 +158,35 @@ const UserDashboard = () => {
           </TabsList>
 
           <TabsContent value="available">
-            {/* ===== BAGIAN INI KITA SEDERHANAKAN UNTUK DEBUGGING ===== */}
             <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              <p>Memuat daftar produk...</p>
+              {products.map((product) => (
+                <Card key={product.id} className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] bg-gradient-card border-0">
+                  <CardContent className="p-0">
+                    <div className="aspect-square relative overflow-hidden rounded-t-lg bg-muted">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-primary-light"><Shirt className="h-16 w-16 text-primary" /></div>
+                      )}
+                      <div className="absolute top-3 right-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.stock > 0 ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'}`}>
+                          {product.stock > 0 ? `${product.stock} tersedia` : 'Habis'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-lg text-card-foreground">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">Stok: {product.stock} unit</p>
+                      </div>
+                      <Button onClick={() => openBorrowDialog(product)} variant="gradient" className="w-full" disabled={product.stock <= 0}>
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        {product.stock > 0 ? 'Pinjam' : 'Stok Habis'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
           
@@ -240,25 +268,4 @@ const UserDashboard = () => {
             <form onSubmit={handleReturn} className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="return-quantity">Jumlah yang Dikembalikan</Label>
-                <Input id="return-quantity" type="number" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} min="1" max={returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} required />
-                <p className="text-xs text-muted-foreground">Masih dipinjam: {returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned_quantity : 0} unit</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="return-reason">Laporan / Alasan Pengembalian</Label>
-                <Textarea id="return-reason" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} placeholder="Contoh: Acara sudah selesai" />
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setReturnDialog({ open: false, item: null })} className="flex-1">Batal</Button>
-                <Button type="submit" variant="gradient" disabled={submitting} className="flex-1">
-                  {submitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Memproses...</>) : 'Kembalikan Barang'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </Layout>
-  );
-};
-
-export default UserDashboard;
+                <Input id="return-quantity" type="number" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} min="1" max={returnDialog.item ? returnDialog.item.quantity - returnDialog.item.returned
