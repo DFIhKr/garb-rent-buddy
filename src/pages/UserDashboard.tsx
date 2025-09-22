@@ -1,4 +1,4 @@
-// src/pages/UserDashboard.tsx - PERBAIKAN FINAL UNTUK FILTER KOLOM
+// src/pages/UserDashboard.tsx - FINAL DENGAN PEMANGGILAN RPC YANG STABIL
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
@@ -67,12 +67,8 @@ const UserDashboard = () => {
 
   const fetchBorrowedItems = async () => {
     if (!profile) return;
-    const { data, error } = await supabase
-      .from('transactions')
-      .select(`id, quantity, returned_quantity, created_at, products (name)`)
-      .eq('user_id', profile.id)
-      // ===== INI ADALAH BARIS YANG DIPERBAIKI =====
-      .filter('quantity', 'gt.returned_quantity');
+    // ===== INI ADALAH BARIS YANG DIPERBAIKI: MEMANGGIL FUNGSI RPC =====
+    const { data, error } = await supabase.rpc('get_active_transactions');
     if (error) throw error;
     setBorrowedItems(data || []);
   };
