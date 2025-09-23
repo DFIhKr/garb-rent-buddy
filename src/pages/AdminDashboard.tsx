@@ -176,7 +176,7 @@ const AdminDashboard = () => {
               <History className="h-4 w-4" />
               <span className="text-sm font-medium">Riwayat</span>
             </TabsTrigger>
-          </TabsList>>          
+          </TabsList>          
           {/* ===== PERUBAHAN TAMPILAN DIMULAI DARI SINI ===== */}
           <TabsContent value="add-product">
             <Card>
