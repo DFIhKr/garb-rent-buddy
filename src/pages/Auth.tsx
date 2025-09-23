@@ -78,8 +78,8 @@ const Auth = () => {
           <div className="bg-white rounded-full p-4 w-16 h-16 mx-auto mb-4 shadow-glow">
             <Shirt className="w-8 h-8 text-primary mx-auto" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Garb Rent</h1>
-          <p className="text-white/80">Sistem Inventaris Peminjaman Baju</p>
+          <h1 className="text-3xl font-bold text-white mb-2">CatatPinjam</h1>
+          <p className="text-white/80">Sistem Inventaris Peminjaman Barang</p>
         </div>
 
         <Card className="shadow-glow bg-white/95 backdrop-blur-sm border-0">
