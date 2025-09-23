@@ -1,45 +1,61 @@
-// src/components/ProtectedRoute.tsx
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+// src/components/Layout.tsx
 
-interface ProtectedRouteProps {
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/enhanced-button';
+import { LogOut, Shirt, User } from 'lucide-react';
+
+interface LayoutProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'user';
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { profile, loading } = useAuth();
-  const location = useLocation();
+const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { profile, signOut } = useAuth();
 
-  // 1. Tampilkan layar loading jika konteks masih memeriksa status otentikasi
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
-          <p className="text-white/80">Memverifikasi sesi...</p>
+  return (
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Shirt className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Garb Rent</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+                  Dashboard {profile?.role}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+                <User className="h-4 w-4" />
+                <span className="text-sm font-medium">{profile?.name}</span>
+              </div>
+              
+              <Button
+                onClick={signOut}
+                variant="ghost"
+                size="sm"
+                className="text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Keluar
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-    );
-  }
+      </header>
 
-  // 2. Jika loading selesai dan TIDAK ADA profil, arahkan ke halaman login
-  if (!profile) {
-    // Simpan halaman yang ingin dituju agar bisa kembali setelah login
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
-
-  // 3. Jika ada role yang dibutuhkan dan role pengguna tidak sesuai, arahkan ke halaman yang sesuai
-  if (requiredRole && profile.role !== requiredRole) {
-    // Jika admin mencoba akses halaman user, arahkan ke dashboard admin, begitu juga sebaliknya.
-    const redirectTo = profile.role === 'admin' ? '/admin' : '/user';
-    return <Navigate to={redirectTo} replace />;
-  }
-
-  // 4. Jika semua pemeriksaan lolos, tampilkan halaman yang seharusnya
-  return <>{children}</>;
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
+    </div>
+  );
 };
 
-export default ProtectedRoute;
+export default Layout;
