@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.tsx - VERSI DEBUG DENGAN CONSOLE.LOG
+// src/pages/AdminDashboard.tsx - VERSI FINAL LENGKAP
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
@@ -17,8 +17,6 @@ interface Transaction { id: number; quantity: number; created_at: string; users:
 interface ActivityLogItem { activity_type: 'borrow' | 'return'; event_date: string; user_name: string; product_name: string; quantity: number; reason: string; borrower_name: string; }
 
 const AdminDashboard = () => {
-  console.log('[RENDER] Komponen AdminDashboard mulai dirender.');
-
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activityLog, setActivityLog] = useState<ActivityLogItem[]>([]);
@@ -32,12 +30,10 @@ const AdminDashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('[EFFECT] useEffect dipanggil, akan menjalankan fetchData.');
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    console.log('[FETCH] Fungsi fetchData dimulai.');
     setLoading(true);
     try {
       await Promise.all([
@@ -45,60 +41,75 @@ const AdminDashboard = () => {
         fetchTransactions(),
         fetchActivityLog()
       ]);
-      console.log('[FETCH] Semua data berhasil diambil.');
     } catch (error: any) {
-      console.error('[FETCH ERROR] Terjadi error saat mengambil data:', error);
       toast({ title: "Error", description: error.message || "Gagal memuat data", variant: "destructive" });
     } finally {
-      console.log('[FETCH] Proses fetch selesai, setLoading(false).');
       setLoading(false);
     }
   };
 
   const fetchProducts = async () => {
-    console.log('...mengambil data products');
     const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-    console.log('   -> Data Products:', data);
-    if (error) {
-      console.error('   -> Error Products:', error);
-      throw error;
-    }
+    if (error) throw error;
     setProducts(data || []);
   };
   
   const fetchTransactions = async () => {
-    console.log('...mengambil data transactions');
     const { data, error } = await supabase.from('transactions').select(`id, quantity, created_at, users (name, class), products (name)`).order('created_at', { ascending: false });
-    console.log('   -> Data Transactions:', data);
-    if (error) {
-      console.error('   -> Error Transactions:', error);
-      throw error;
-    }
+    if (error) throw error;
     setTransactions(data || []);
   };
   
   const fetchActivityLog = async () => {
-    console.log('...mengambil data activity_log');
     const { data, error } = await supabase.from('activity_log').select('*');
-    console.log('   -> Data Activity Log:', data);
-    if (error) {
-      console.error('   -> Error Activity Log:', error);
-      throw error;
-    }
+    if (error) throw error;
     setActivityLog(data || []);
   };
 
-  // ... (sisa fungsi handleAdd, handleDelete, formatDate tidak perlu diubah)
-  const handleAddProduct = async (e: React.FormEvent) => { /* ... */ fetchData(); };
-  const handleDeleteProduct = async (productId: number) => { /* ... */ fetchData(); };
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productName || !productStock) return;
+    setUploading(true);
+    try {
+      let imageUrl = null;
+      if (productImage) {
+        const fileName = `${Date.now()}-${productImage.name}`;
+        const { error: uploadError } = await supabase.storage.from('products').upload(fileName, productImage);
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('products').getPublicUrl(fileName);
+        imageUrl = data.publicUrl;
+      }
+      const { error } = await supabase.from('products').insert([{ name: productName, stock: parseInt(productStock), image_url: imageUrl }]);
+      if (error) throw error;
+      toast({ title: "Berhasil!", description: "Produk berhasil ditambahkan" });
+      setProductName('');
+      setProductStock('');
+      setProductImage(null);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal menambah produk", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: number) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus produk ini?")) return;
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+      if (error) throw error;
+      toast({ title: "Berhasil!", description: "Produk telah dihapus." });
+      fetchData();
+    } catch (error: any) {
+      toast({ title: "Gagal Menghapus", description: error.message || "Produk ini mungkin terkait dengan transaksi.", variant: "destructive" });
+    }
+  };
+  
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   if (loading) {
-    console.log('[RENDER] Status: LOADING...');
     return <Layout><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></Layout>;
   }
-  
-  console.log('[RENDER] Status: render UI utama dengan data:', { products, transactions, activityLog });
 
   return (
     <Layout>
@@ -108,7 +119,7 @@ const AdminDashboard = () => {
           <p className="text-muted-foreground mt-2">Kelola produk, pantau transaksi, dan lihat riwayat aktivitas</p>
         </div>
         
-        <Tabs defaultValue="products" className="space-y-6">
+        <Tabs defaultValue="add-product" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="add-product" className="flex items-center space-x-2"><Plus className="h-4 w-4" /><span>Tambah Produk</span></TabsTrigger>
             <TabsTrigger value="products" className="flex items-center space-x-2"><Package className="h-4 w-4" /><span>Daftar Produk</span></TabsTrigger>
@@ -118,10 +129,29 @@ const AdminDashboard = () => {
           
           <TabsContent value="add-product">
             <Card>
-              <CardHeader><CardTitle>Tambah Produk Baru</CardTitle><CardDescription>Tambahkan produk baju ke inventory</CardDescription></CardHeader>
-              <CardContent><form onSubmit={handleAddProduct} className="space-y-4">
-                  {/* ... form content ... */}
-              </form></CardContent>
+              <CardHeader>
+                <CardTitle>Tambah Produk Baru</CardTitle>
+                <CardDescription>Tambahkan produk baju ke inventory</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleAddProduct} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="product-name">Nama Produk</Label>
+                    <Input id="product-name" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Contoh: Kemeja Putih" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="product-stock">Stok</Label>
+                    <Input id="product-stock" type="number" value={productStock} onChange={(e) => setProductStock(e.target.value)} placeholder="Jumlah stok" min="0" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="product-image">Gambar Produk</Label>
+                    <Input id="product-image" type="file" accept="image/*" onChange={(e) => setProductImage(e.target.files?.[0] || null)} />
+                  </div>
+                  <Button type="submit" variant="gradient" disabled={uploading} className="w-full">
+                    {uploading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Mengupload...</>) : (<><Plus className="mr-2 h-4 w-4" />Tambah Produk</>)}
+                  </Button>
+                </form>
+              </CardContent>
             </Card>
           </TabsContent>
 
@@ -134,7 +164,11 @@ const AdminDashboard = () => {
                   {products.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Belum ada produk</TableCell></TableRow>
                   ) : ( products.map((product) => ( <TableRow key={product.id}>
-                          {/* ... table content ... */}
+                          <TableCell>{product.image_url ? <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover" /> : <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}</TableCell>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell><span className={`px-2 py-1 rounded-full text-sm font-medium ${product.stock > 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>{product.stock} unit</span></TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(product.created_at)}</TableCell>
+                          <TableCell className="text-right"><Button variant="destructive" size="sm" onClick={() => handleDeleteProduct(product.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
                   </TableRow>)))}
                 </TableBody>
               </Table></CardContent>
@@ -143,14 +177,18 @@ const AdminDashboard = () => {
           
           <TabsContent value="transactions">
             <Card>
-              <CardHeader><CardTitle>Riwayat Transaksi</CardTitle><CardDescription>Pantau semua transaksi peminjaman</CardDescription></CardHeader>
+              <CardHeader><CardTitle>Daftar Peminjaman</CardTitle><CardDescription>Pantau semua transaksi peminjaman yang aktif</CardDescription></CardHeader>
               <CardContent><Table>
                 <TableHeader><TableRow><TableHead>Nama User</TableHead><TableHead>Kelas</TableHead><TableHead>Produk</TableHead><TableHead>Jumlah</TableHead><TableHead>Tanggal</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {transactions.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Belum ada transaksi</TableCell></TableRow>
                   ) : ( transactions.map((transaction) => ( <TableRow key={transaction.id}>
-                          {/* ... table content ... */}
+                          <TableCell className="font-medium">{transaction.users?.name || 'User Dihapus'}</TableCell>
+                          <TableCell>{transaction.users?.class || '-'}</TableCell>
+                          <TableCell>{transaction.products?.name || 'Produk Dihapus'}</TableCell>
+                          <TableCell>{transaction.quantity} unit</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(transaction.created_at)}</TableCell>
                   </TableRow>)))}
                 </TableBody>
               </Table></CardContent>
