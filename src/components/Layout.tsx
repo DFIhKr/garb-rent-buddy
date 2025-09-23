@@ -24,7 +24,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Shirt className="h-6 w-6 text-primary" />
               </div>
               <div className="hidden sm:block"> {/* Sembunyikan di layar kecil */}
-                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Garb Rent</h1>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">CatatPinjam</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
                   Dashboard {profile?.role}
                 </p>
