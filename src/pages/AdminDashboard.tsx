@@ -131,12 +131,13 @@ const AdminDashboard = () => {
         </div>
         
         <Tabs defaultValue="add-product" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 p-1 rounded-lg bg-muted shadow-inner">
+          <TabsList className="grid w-full grid-cols-4 gap-2 p-1 rounded-lg bg-muted shadow-inner">
             <TabsTrigger
               value="add-product"
               className="flex items-center justify-center space-x-2 py-2 px-3 rounded-md transition-all
-                         bg-card text-foreground shadow-sm border border-input
-                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                         bg-card text-foreground border border-input
+                         shadow-[0_4px_14px_0_hsl(var(--primary)/10%)] 
+                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_4px_14px_0_hsl(var(--primary)/25%)]
                          hover:bg-accent hover:text-accent-foreground"
             >
               <Plus className="h-4 w-4" />
@@ -145,8 +146,9 @@ const AdminDashboard = () => {
             <TabsTrigger
               value="products"
               className="flex items-center justify-center space-x-2 py-2 px-3 rounded-md transition-all
-                         bg-card text-foreground shadow-sm border border-input
-                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                         bg-card text-foreground border border-input
+                         shadow-[0_4px_14px_0_hsl(var(--primary)/10%)]
+                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_4px_14px_0_hsl(var(--primary)/25%)]
                          hover:bg-accent hover:text-accent-foreground"
             >
               <Package className="h-4 w-4" />
@@ -155,8 +157,9 @@ const AdminDashboard = () => {
             <TabsTrigger
               value="transactions"
               className="flex items-center justify-center space-x-2 py-2 px-3 rounded-md transition-all
-                         bg-card text-foreground shadow-sm border border-input
-                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                         bg-card text-foreground border border-input
+                         shadow-[0_4px_14px_0_hsl(var(--primary)/10%)]
+                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_4px_14px_0_hsl(var(--primary)/25%)]
                          hover:bg-accent hover:text-accent-foreground"
             >
               <Users className="h-4 w-4" />
@@ -165,14 +168,15 @@ const AdminDashboard = () => {
             <TabsTrigger
               value="history"
               className="flex items-center justify-center space-x-2 py-2 px-3 rounded-md transition-all
-                         bg-card text-foreground shadow-sm border border-input
-                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                         bg-card text-foreground border border-input
+                         shadow-[0_4px_14px_0_hsl(var(--primary)/10%)]
+                         data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_4px_14px_0_hsl(var(--primary)/25%)]
                          hover:bg-accent hover:text-accent-foreground"
             >
               <History className="h-4 w-4" />
               <span className="text-sm font-medium">Riwayat</span>
             </TabsTrigger>
-          </TabsList>          
+          </TabsList>>          
           {/* ===== PERUBAHAN TAMPILAN DIMULAI DARI SINI ===== */}
           <TabsContent value="add-product">
             <Card>
