@@ -130,9 +130,9 @@ const UserDashboard = () => {
         
         {/* --- HEADER HALAMAN BARU --- */}
         <div className="flex items-center space-x-4">
-          <div className="bg-secondary p-3 rounded-lg">
-            {/*  <ShoppingCart className="h-6 w-6 text-primary" /> */}
-          </div>
+          {/* <div className="bg-secondary p-3 rounded-lg">
+             <ShoppingCart className="h-6 w-6 text-primary" /> 
+          </div>*/}
           <div>
             <h1 className="text-2xl font-bold text-foreground">Katalog Produk</h1>
             <p className="text-muted-foreground mt-1">
