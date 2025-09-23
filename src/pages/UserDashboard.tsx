@@ -40,13 +40,84 @@ const UserDashboard = () => {
 
   useEffect(() => { if(profile) fetchAllData(); }, [profile]);
 
-  const fetchAllData = async () => { /* ... (Tidak Berubah) ... */ };
-  const fetchProducts = async () => { /* ... (Tidak Berubah) ... */ };
-  const fetchBorrowedItems = async () => { /* ... (Tidak Berubah) ... */ };
-  const handleBorrow = async (e: React.FormEvent) => { /* ... (Tidak Berubah) ... */ };
-  const openBorrowDialog = (product: Product) => { /* ... (Tidak Berubah) ... */ };
-  const handleReturn = async (e: React.FormEvent) => { /* ... (Tidak Berubah) ... */ };
-  const openReturnDialog = (item: BorrowedItem) => { /* ... (Tidak Berubah) ... */ };
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([fetchProducts(), fetchBorrowedItems()]);
+    } catch (error: any) {
+      toast({ title: "Error Memuat Data", description: error.message || "Gagal memuat data dari database.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+  const fetchProducts = async () => {
+    const { data, error } = await supabase.from('products').select('*').eq('is_archived', false).order('created_at', { ascending: false });
+    if (error) throw error;
+    setProducts(data || []);
+  };
+  const fetchBorrowedItems = async () => {
+    if (!profile) return;
+    const { data, error } = await supabase.rpc('get_active_transactions');
+    if (error) throw error;
+    setBorrowedItems(data || []);
+  };
+  const handleBorrow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!borrowDialog.product || !borrowQuantity || !borrowerName || !profile) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('transactions').insert([{
+          user_id: profile.id, product_id: borrowDialog.product.id, quantity: parseInt(borrowQuantity),
+          borrower_name: borrowerName, reason: borrowReason
+      }]);
+      if (error) throw error;
+      toast({ title: "Berhasil!", description: `Laporan peminjaman ${borrowDialog.product.name} berhasil dibuat`, variant: "default" });
+      setBorrowDialog({ open: false, product: null });
+      fetchAllData();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal membuat laporan peminjaman", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const openBorrowDialog = (product: Product) => {
+    if (product.stock <= 0) { toast({ title: "Stok Habis", variant: "destructive" }); return; }
+    setBorrowerName(profile?.name || '');
+    setUserClass(profile?.class || '');
+    setBorrowReason('');
+    setBorrowQuantity('1');
+    setBorrowDialog({ open: true, product });
+  };
+  const handleReturn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!returnDialog.item || !returnQuantity) return;
+    const quantityToReturn = parseInt(returnQuantity);
+    const item = returnDialog.item;
+    const maxReturn = item.quantity - item.returned_quantity;
+    if (quantityToReturn <= 0 || quantityToReturn > maxReturn) {
+      toast({ title: "Error", description: `Jumlah harus antara 1 dan ${maxReturn}`, variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.rpc('handle_return', {
+        p_transaction_id: item.id, p_return_quantity: quantityToReturn, p_return_reason: returnReason
+      });
+      if (error) throw error;
+      toast({ title: "Berhasil!", description: "Barang telah dikembalikan.", variant: "default" });
+      setReturnDialog({ open: false, item: null });
+      fetchAllData();
+    } catch (error: any) {
+      toast({ title: "Gagal Mengembalikan", description: error.message || "Terjadi kesalahan.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const openReturnDialog = (item: BorrowedItem) => {
+    setReturnQuantity('1');
+    setReturnReason('');
+    setReturnDialog({ open: true, item });
+  };
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   if (loading) {
@@ -119,7 +190,7 @@ const UserDashboard = () => {
                         )}
                         <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-semibold text-white ${product.stock > 0 ? 'bg-green-500' : 'bg-red-500'}`}>
                           {product.stock > 0 ? `${product.stock} Tersedia` : 'Habis'}
-                        </span>
+                        </div>
                       </div>
                       <div className="p-4 space-y-3 bg-card">
                         <div>
